@@ -13,6 +13,7 @@ class SalesGPTAPI:
     def __init__(
         self,
         config_path: str,
+        openai_api_key:str,
         verbose: bool = True,
         max_num_turns: int = 20,
         model_name: str = "gpt-3.5-turbo",
@@ -24,23 +25,21 @@ class SalesGPTAPI:
         self.max_num_turns = max_num_turns
         self.model_name = model_name
         if "anthropic" in model_name:
-            self.llm = BedrockCustomModel(
-                type="bedrock-model",
-                model=model_name,
-                system_prompt="You are a helpful assistant.",
-            )
+            self.llm = BedrockCustomModel(type="bedrock-model",model=model_name,system_prompt="You are a helpful assistant.",)
         else:
-            self.llm = ChatLiteLLM(temperature=0.2, model=model_name)
+            # self.llm = ChatLiteLLM(temperature=0.2, model=model_name)
+            from langchain_openai import ChatOpenAI
+            self.llm = ChatOpenAI(temperature=0,model_name=model_name,openai_api_key=openai_api_key,base_url='https://vip.apiyi.com/v1')
         self.product_catalog = product_catalog
         self.conversation_history = []
         self.use_tools = use_tools
-        self.sales_agent = self.initialize_agent()
+        self.sales_agent = self.initialize_agent(openai_api_key)
         self.current_turn = 0
 
-    def initialize_agent(self):
+    def initialize_agent(self,openai_api_key):
         config = {"verbose": self.verbose}
         if self.config_path:
-            with open(self.config_path, "r") as f:
+            with open(self.config_path, "r", encoding='utf-8') as f:
                 config.update(json.load(f))
             if self.verbose:
                 print(f"Loaded agent config: {config}")
@@ -59,7 +58,7 @@ class SalesGPTAPI:
                 }
             )
 
-        sales_agent = SalesGPT.from_llm(self.llm, **config)
+        sales_agent = SalesGPT.from_llm(self.llm, openai_api_key=openai_api_key, **config)
 
         print(f"SalesGPT use_tools: {sales_agent.use_tools}")
         sales_agent.seed_agent()
@@ -91,14 +90,11 @@ class SalesGPTAPI:
         ):
             print("Sales Agent determined it is time to end the conversation.")
             # strip end of call for now
-            self.sales_agent.conversation_history[
-                -1
-            ] = self.sales_agent.conversation_history[-1].replace("<END_OF_CALL>", "")
+            self.sales_agent.conversation_history[-1] = self.sales_agent.conversation_history[-1].replace("<END_OF_CALL>", "")
 
         reply = (
             self.sales_agent.conversation_history[-1]
-            if self.sales_agent.conversation_history
-            else ""
+            if self.sales_agent.conversation_history else ""
         )
         #print("AI LOG INTERMEDIATE STEPS: ", ai_log["intermediate_steps"])
 
@@ -112,11 +108,7 @@ class SalesGPTAPI:
                 res_str = ai_log["intermediate_steps"][0]
                 print("RES STR: ", res_str)
                 agent_action = res_str[0]
-                tool, tool_input, log = (
-                    agent_action.tool,
-                    agent_action.tool_input,
-                    agent_action.log,
-                )
+                tool, tool_input, log = (agent_action.tool,agent_action.tool_input,agent_action.log,)
                 actions = re.search(r"Action: (.*?)[\n]*Action Input: (.*)", log)
                 action_input = actions.group(2)
                 action_output =  res_str[1]
@@ -126,13 +118,7 @@ class SalesGPTAPI:
                     action_output = action_output.replace("</web_search>", "' target='_blank' rel='noopener noreferrer'>")
             except Exception as e:
                 print("ERROR: ", e)
-                tool, tool_input, action, action_input, action_output = (
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                )
+                tool, tool_input, action, action_input, action_output = ("","","","","",)
         else:
             tool, tool_input, action, action_input, action_output = "", "", "", "", ""
 
@@ -149,7 +135,7 @@ class SalesGPTAPI:
         }
         return payload
 
-    async def do_stream(self, conversation_history: [str], human_input=None):
+    async def do_stream(self, conversation_history: str, human_input=None):
         # TODO
         current_turns = len(conversation_history) + 1
         if current_turns >= self.max_num_turns:

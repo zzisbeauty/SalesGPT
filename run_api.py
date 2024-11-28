@@ -66,9 +66,7 @@ async def get_bot_name(authorization: Optional[str] = Header(None)):
         
     sales_api = SalesGPTAPI(
         config_path=os.getenv("CONFIG_PATH", "examples/example_agent_setup.json"),
-        product_catalog=os.getenv(
-            "PRODUCT_CATALOG", "examples/sample_product_catalog.txt"
-        ),
+        product_catalog=os.getenv("PRODUCT_CATALOG", "examples/sample_product_catalog.txt"),
         verbose=True,
         model_name=os.getenv("GPT_MODEL", "gpt-3.5-turbo-0613"),
     )
@@ -80,16 +78,14 @@ async def get_bot_name(authorization: Optional[str] = Header(None)):
 async def chat_with_sales_agent(req: MessageList, stream: bool = Query(False), authorization: Optional[str] = Header(None)):
     """
     Handles chat interactions with the sales agent.
-
-    This endpoint receives a message from the user and returns the sales agent's response. It supports session management to maintain context across multiple interactions with the same user.
+    This endpoint receives a message from the user and returns the sales agent's response.
+    It supports session management to maintain context across multiple interactions with the same user.
 
     Args:
         req (MessageList): A request object containing the session ID and the message from the human user.
         stream (bool, optional): A flag to indicate if the response should be streamed. Currently, streaming is not implemented.
-
     Returns:
         If streaming is requested, it returns a StreamingResponse object (not yet implemented). Otherwise, it returns the sales agent's response to the user's message.
-
     Note:
         Streaming functionality is planned but not yet available. The current implementation only supports synchronous responses.
     """
@@ -105,11 +101,10 @@ async def chat_with_sales_agent(req: MessageList, stream: bool = Query(False), a
     else:
         print("Creating new session")
         sales_api = SalesGPTAPI(
-            config_path=os.getenv("CONFIG_PATH", "examples/example_agent_setup.json"),
+            config_path=os.getenv("CONFIG_PATH", "examples/example_cn_agent_setup.json"),
             verbose=True,
-            product_catalog=os.getenv(
-                "PRODUCT_CATALOG", "examples/sample_product_catalog.txt"
-            ),
+            openai_api_key=OPENAI_API_KEY,
+            product_catalog=os.getenv("PRODUCT_CATALOG", "examples/sample_product_catalog_cn.txt"),
             model_name=os.getenv("GPT_MODEL", "gpt-3.5-turbo-0613"),
             use_tools=os.getenv("USE_TOOLS_IN_API", "True").lower()
             in ["true", "1", "t"],
@@ -119,13 +114,11 @@ async def chat_with_sales_agent(req: MessageList, stream: bool = Query(False), a
 
     # TODO stream not working
     if stream:
-
         async def stream_response():
             stream_gen = sales_api.do_stream(req.conversation_history, req.human_say)
             async for message in stream_gen:
                 data = {"token": message}
                 yield json.dumps(data).encode("utf-8") + b"\n"
-
         return StreamingResponse(stream_response())
     else:
         response = await sales_api.do(req.human_say)

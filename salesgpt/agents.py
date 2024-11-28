@@ -24,7 +24,7 @@ from salesgpt.parsers import SalesConvoOutputParser
 from salesgpt.prompts import SALES_AGENT_TOOLS_PROMPT
 from salesgpt.stages import CONVERSATION_STAGES
 from salesgpt.templates import CustomPromptTemplateForTools
-from salesgpt.tools import get_tools, setup_knowledge_base
+from salesgpt.tools import get_tools
 
 
 def _create_retry_decorator(llm: Any) -> Callable[[Any], Any]:
@@ -540,7 +540,7 @@ class SalesGPT(Chain):
 
     @classmethod
     @time_logger
-    def from_llm(cls, llm: ChatLiteLLM, verbose: bool = False, **kwargs) -> "SalesGPT":
+    def from_llm(cls, llm: ChatLiteLLM, openai_api_key, verbose: bool = False, **kwargs) -> "SalesGPT":
         """
         Class method to initialize the SalesGPT Controller from a given ChatLiteLLM instance.
 
@@ -564,9 +564,7 @@ class SalesGPT(Chain):
             The initialized SalesGPT Controller.
         """
         stage_analyzer_chain = StageAnalyzerChain.from_llm(llm, verbose=verbose)
-        sales_conversation_utterance_chain = SalesConversationChain.from_llm(
-            llm, verbose=verbose
-        )
+        sales_conversation_utterance_chain = SalesConversationChain.from_llm(llm, verbose=verbose)
 
         # Handle custom prompts
         use_custom_prompt = kwargs.pop("use_custom_prompt", False)
@@ -588,15 +586,13 @@ class SalesGPT(Chain):
         elif isinstance(use_tools_value, bool):
             use_tools = use_tools_value
         else:
-            raise ValueError(
-                "use_tools must be a boolean or a string ('True' or 'False')"
-            )
+            raise ValueError("use_tools must be a boolean or a string ('True' or 'False')")
         sales_agent_executor = None
         knowledge_base = None
 
         if use_tools:
             product_catalog = kwargs.pop("product_catalog", None)
-            tools = get_tools(product_catalog)
+            tools = get_tools(product_catalog, openai_api_key)
 
             prompt = CustomPromptTemplateForTools(
                 template=SALES_AGENT_TOOLS_PROMPT,
@@ -616,9 +612,7 @@ class SalesGPT(Chain):
             )
             llm_chain = LLMChain(llm=llm, prompt=prompt, verbose=verbose)
             tool_names = [tool.name for tool in tools]
-            output_parser = SalesConvoOutputParser(
-                ai_prefix=kwargs.get("salesperson_name", ""), verbose=verbose
-            )
+            output_parser = SalesConvoOutputParser(ai_prefix=kwargs.get("salesperson_name", ""), verbose=verbose)
             sales_agent_with_tools = LLMSingleActionAgent(
                 llm_chain=llm_chain,
                 output_parser=output_parser,
@@ -638,7 +632,7 @@ class SalesGPT(Chain):
             sales_conversation_utterance_chain=sales_conversation_utterance_chain,
             sales_agent_executor=sales_agent_executor,
             knowledge_base=knowledge_base,
-            model_name=llm.model,
+            # model_name=llm.model,
             verbose=verbose,
             use_tools=use_tools,
             **kwargs,

@@ -14,39 +14,34 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-def setup_knowledge_base(
-    product_catalog: str = None, model_name: str = "gpt-3.5-turbo"
-):
+def setup_knowledge_base(product_catalog: str = None, openai_api_key:str='', model_name: str = "gpt-3.5-turbo"):
     """
     We assume that the product catalog is simply a text string.
     """
     # load product catalog
-    with open(product_catalog, "r") as f:
+    with open(product_catalog, "r",encoding='utf-8') as f:
         product_catalog = f.read()
 
     text_splitter = CharacterTextSplitter(chunk_size=5000, chunk_overlap=200)
     texts = text_splitter.split_text(product_catalog)
 
-    llm = ChatOpenAI(model_name="gpt-4-0125-preview", temperature=0)
+    # llm = ChatOpenAI(model_name="gpt-4-0125-preview", temperature=0)
+    llm = ChatOpenAI(temperature=0,model_name=model_name,openai_api_key=openai_api_key,base_url='https://vip.apiyi.com/v1')
 
-    embeddings = OpenAIEmbeddings()
-    docsearch = Chroma.from_texts(
-        texts, embeddings, collection_name="product-knowledge-base"
-    )
+    # embeddings = OpenAIEmbeddings()
+    # embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key,model=model_name,base_url='https://vip.apiyi.com/v1')
+    embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key,model='text-embedding-ada-002',base_url='https://vip.apiyi.com/v1')
 
-    knowledge_base = RetrievalQA.from_chain_type(
-        llm=llm, chain_type="stuff", retriever=docsearch.as_retriever()
-    )
+    docsearch = Chroma.from_texts(texts, embeddings, collection_name="product-knowledge-base")
+
+    knowledge_base = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=docsearch.as_retriever())
     return knowledge_base
 
 
 def completion_bedrock(model_id, system_prompt, messages, max_tokens=1000):
-    """
-    High-level API call to generate a message with Anthropic Claude.
-    """
-    bedrock_runtime = boto3.client(
-        service_name="bedrock-runtime", region_name=os.environ.get("AWS_REGION_NAME")
-    )
+    """ High-level API call to generate a message with Anthropic Claude. """
+
+    bedrock_runtime = boto3.client(service_name="bedrock-runtime", region_name=os.environ.get("AWS_REGION_NAME"))
 
     body = json.dumps(
         {
@@ -65,7 +60,7 @@ def completion_bedrock(model_id, system_prompt, messages, max_tokens=1000):
 
 def get_product_id_from_query(query, product_price_id_mapping_path):
     # Load product_price_id_mapping from a JSON file
-    with open(product_price_id_mapping_path, "r") as f:
+    with open(product_price_id_mapping_path, "r", encoding='utf-8') as f:
         product_price_id_mapping = json.load(f)
 
     # Serialize the product_price_id_mapping to a JSON string for inclusion in the prompt
@@ -245,12 +240,12 @@ def generate_calendly_invitation_link(query):
     else:
         return "Failed to create Calendly link: "
 
-def get_tools(product_catalog):
+def get_tools(product_catalog,openai_api_key):
     # query to get_tools can be used to be embedded and relevant tools found
     # see here: https://langchain-langchain.vercel.app/docs/use_cases/agents/custom_agent_with_plugin_retrieval#tool-retriever
 
     # we only use four tools for now, but this is highly extensible!
-    knowledge_base = setup_knowledge_base(product_catalog)
+    knowledge_base = setup_knowledge_base(product_catalog,openai_api_key)
     tools = [
         Tool(
             name="ProductSearch",
