@@ -43,24 +43,14 @@ class CustomAgentExecutor(AgentExecutor):
 
         # Check if the _call method supports the new argument 'run_manager'
         new_arg_supported = inspect.signature(self._call).parameters.get("run_manager")
-        run_manager = callback_manager.on_chain_start(
-            dumpd(self),
-            inputs,
-            name=run_name,
-        )
+        run_manager = callback_manager.on_chain_start(dumpd(self),inputs,name=run_name,)
 
         # Capture the start of the chain as an intermediate step
-        intermediate_steps.append(
-            {"event": "Chain Started", "details": "Inputs prepared"}
-        )
+        intermediate_steps.append({"event": "Chain Started", "details": "Inputs prepared"})
 
         try:
             # Execute the _call method, passing 'run_manager' if supported
-            outputs = (
-                self._call(inputs, run_manager=run_manager)
-                if new_arg_supported
-                else self._call(inputs)
-            )
+            outputs = (self._call(inputs, run_manager=run_manager) if new_arg_supported else self._call(inputs))
             # Capture a successful call as an intermediate step
             intermediate_steps.append({"event": "Call Successful", "outputs": outputs})
         except BaseException as e:

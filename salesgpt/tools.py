@@ -14,10 +14,13 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-def setup_knowledge_base(product_catalog: str = None, openai_api_key:str='', model_name: str = "gpt-3.5-turbo"):
-    """
-    We assume that the product catalog is simply a text string.
-    """
+def setup_knowledge_base(
+        product_catalog: str = None, 
+        openai_api_key:str='',
+        api_base_url='', 
+        model_name: str = "gpt-3.5-turbo"
+    ):
+    """ We assume that the product catalog is simply a text string. """
     # load product catalog
     with open(product_catalog, "r",encoding='utf-8') as f:
         product_catalog = f.read()
@@ -26,23 +29,29 @@ def setup_knowledge_base(product_catalog: str = None, openai_api_key:str='', mod
     texts = text_splitter.split_text(product_catalog)
 
     # llm = ChatOpenAI(model_name="gpt-4-0125-preview", temperature=0)
-    llm = ChatOpenAI(temperature=0,model_name=model_name,openai_api_key=openai_api_key,base_url='https://vip.apiyi.com/v1')
+    _llm = ChatOpenAI(
+        temperature=0, 
+        model_name=model_name,
+        openai_api_key=openai_api_key, 
+        base_url=api_base_url
+    )
 
     # embeddings = OpenAIEmbeddings()
-    # embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key,model=model_name,base_url='https://vip.apiyi.com/v1')
-    embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key,model='text-embedding-ada-002',base_url='https://vip.apiyi.com/v1')
-
-    docsearch = Chroma.from_texts(texts, embeddings, collection_name="product-knowledge-base")
-
-    knowledge_base = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=docsearch.as_retriever())
+    # embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key,model=model_name,base_url=api_base_url)
+    _embeddings = OpenAIEmbeddings(
+        model='text-embedding-ada-002',
+        openai_api_key=openai_api_key,
+        base_url=api_base_url
+    )
+    # 主要用于构建一个 检索增强问答（Retrieval-Augmented Generation, RAG）系统。它结合了一个 LLM（大语言模型） 和一个 检索器（retriever） 来执行基于文档内容的问答
+    docsearch = Chroma.from_texts(texts, _embeddings, collection_name="product-knowledge-base")
+    knowledge_base = RetrievalQA.from_chain_type(llm=_llm, chain_type="stuff", retriever=docsearch.as_retriever())
     return knowledge_base
 
 
 def completion_bedrock(model_id, system_prompt, messages, max_tokens=1000):
     """ High-level API call to generate a message with Anthropic Claude. """
-
     bedrock_runtime = boto3.client(service_name="bedrock-runtime", region_name=os.environ.get("AWS_REGION_NAME"))
-
     body = json.dumps(
         {
             "anthropic_version": "bedrock-2023-05-31",
@@ -51,10 +60,8 @@ def completion_bedrock(model_id, system_prompt, messages, max_tokens=1000):
             "messages": messages,
         }
     )
-
     response = bedrock_runtime.invoke_model(body=body, modelId=model_id)
     response_body = json.loads(response.get("body").read())
-
     return response_body
 
 
@@ -67,9 +74,7 @@ def get_product_id_from_query(query, product_price_id_mapping_path):
     product_price_id_mapping_json_str = json.dumps(product_price_id_mapping)
 
     # Dynamically create the enum list from product_price_id_mapping keys
-    enum_list = list(product_price_id_mapping.values()) + [
-        "No relevant product id found"
-    ]
+    enum_list = list(product_price_id_mapping.values()) + ["No relevant product id found"]
     enum_list_str = json.dumps(enum_list)
 
     prompt = f"""
@@ -123,26 +128,15 @@ def generate_stripe_payment_link(query: str) -> str:
     """Generate a stripe payment link for a customer based on a single query string."""
 
     # example testing payment gateway url
-    PAYMENT_GATEWAY_URL = os.getenv(
-        "PAYMENT_GATEWAY_URL", "https://agent-payments-gateway.vercel.app/payment"
-    )
-    PRODUCT_PRICE_MAPPING = os.getenv(
-        "PRODUCT_PRICE_MAPPING", "example_product_price_id_mapping.json"
-    )
+    PAYMENT_GATEWAY_URL = os.getenv("PAYMENT_GATEWAY_URL", "https://agent-payments-gateway.vercel.app/payment")
+    PRODUCT_PRICE_MAPPING = os.getenv("PRODUCT_PRICE_MAPPING", "example_product_price_id_mapping.json")
 
     # use LLM to get the price_id from query
     price_id = get_product_id_from_query(query, PRODUCT_PRICE_MAPPING)
     price_id = json.loads(price_id)
-    payload = json.dumps(
-        {"prompt": query, **price_id, "stripe_key": os.getenv("STRIPE_API_KEY")}
-    )
-    headers = {
-        "Content-Type": "application/json",
-    }
-
-    response = requests.request(
-        "POST", PAYMENT_GATEWAY_URL, headers=headers, data=payload
-    )
+    payload = json.dumps({"prompt": query, **price_id, "stripe_key": os.getenv("STRIPE_API_KEY")})
+    headers = {"Content-Type": "application/json",}
+    response = requests.request("POST", PAYMENT_GATEWAY_URL, headers=headers, data=payload)
     return response.text
 
 def get_mail_body_subject_from_query(query):
@@ -227,9 +221,9 @@ def generate_calendly_invitation_link(query):
     }
     url = 'https://api.calendly.com/scheduling_links'
     payload = {
-    "max_event_count": 1,
-    "owner": f"https://api.calendly.com/event_types/{event_type_uuid}",
-    "owner_type": "EventType"
+        "max_event_count": 1,
+        "owner": f"https://api.calendly.com/event_types/{event_type_uuid}",
+        "owner_type": "EventType"
     }
     
     
@@ -240,33 +234,39 @@ def generate_calendly_invitation_link(query):
     else:
         return "Failed to create Calendly link: "
 
-def get_tools(product_catalog,openai_api_key):
-    # query to get_tools can be used to be embedded and relevant tools found
-    # see here: https://langchain-langchain.vercel.app/docs/use_cases/agents/custom_agent_with_plugin_retrieval#tool-retriever
+def get_tools(
+        product_catalog,
+        openai_api_key,
+        api_base_url
+    ):
 
-    # we only use four tools for now, but this is highly extensible!
-    knowledge_base = setup_knowledge_base(product_catalog,openai_api_key)
+    # query to get_tools can be used to be embedded and relevant tools found；
+    knowledge_base = setup_knowledge_base(
+        product_catalog=product_catalog,
+        openai_api_key=openai_api_key,
+        api_base_url=api_base_url,
+    )
+
     tools = [
         Tool(
             name="ProductSearch",
             func=knowledge_base.run,
-            description="useful for when you need to answer questions about product information or services offered, availability and their costs.",
+            description="在需要回答关于产品信息、提供的服务、可用性及其成本的问题时非常有用。",
         ),
         Tool(
             name="GeneratePaymentLink",
             func=generate_stripe_payment_link,
-            description="useful to close a transaction with a customer. You need to include product name and quantity and customer name in the query input.",
+            description="在与客户完成交易时非常有用。你需要在查询输入中包括产品名称、数量和客户姓名。",
         ),
         Tool(
             name="SendEmail",
             func=send_email_tool,
-            description="Sends an email based on the query input. The query should specify the recipient, subject, and body of the email.",
+            description="根据查询输入发送电子邮件。查询应指定收件人、主题和电子邮件正文。",
         ),
         Tool(
             name="SendCalendlyInvitation",
             func=generate_calendly_invitation_link,
-            description='''Useful for when you need to create invite for a personal meeting in Sleep Heaven shop. 
-            Sends a calendly invitation based on the query input.''',
+            description='在需要为 Sleep Heaven 商店的个人会议创建邀请时非常有用。根据查询输入发送 Calendly 邀请。',
         )
     ]
 

@@ -14,6 +14,7 @@ class SalesGPTAPI:
         self,
         config_path: str,
         openai_api_key:str,
+        base_url:str,
         verbose: bool = True,
         max_num_turns: int = 20,
         model_name: str = "gpt-3.5-turbo",
@@ -29,7 +30,7 @@ class SalesGPTAPI:
         else:
             # self.llm = ChatLiteLLM(temperature=0.2, model=model_name)
             from langchain_openai import ChatOpenAI
-            self.llm = ChatOpenAI(temperature=0,model_name=model_name,openai_api_key=openai_api_key,base_url='https://vip.apiyi.com/v1')
+            self.llm = ChatOpenAI(temperature=0,model_name=model_name,openai_api_key=openai_api_key,base_url=base_url)
         self.product_catalog = product_catalog
         self.conversation_history = []
         self.use_tools = use_tools

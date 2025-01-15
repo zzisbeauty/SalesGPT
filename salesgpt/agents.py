@@ -1,18 +1,11 @@
 from copy import deepcopy
 from typing import Any, Callable, Dict, List, Union
 
-from langchain.agents import (
-    AgentExecutor,
-    LLMSingleActionAgent,
-    create_openai_tools_agent,
-)
+from langchain.agents import (AgentExecutor,LLMSingleActionAgent,create_openai_tools_agent,)
 from langchain.chains import LLMChain, RetrievalQA
 from langchain.chains.base import Chain
 from langchain_community.chat_models import ChatLiteLLM
-from langchain_core.agents import (
-    _convert_agent_action_to_messages,
-    _convert_agent_observation_to_messages,
-)
+from langchain_core.agents import (_convert_agent_action_to_messages, _convert_agent_observation_to_messages,)
 from langchain_core.language_models.llms import create_base_retry_decorator
 from litellm import acompletion
 from pydantic import Field
@@ -65,15 +58,16 @@ class SalesGPT(Chain):
     sales_conversation_utterance_chain: SalesConversationChain = Field(...)
     conversation_stage_dict: Dict = CONVERSATION_STAGES
 
-    model_name: str = "gpt-3.5-turbo-0613"  # TODO - make this an env variable
+    # api_base_url: str= "",
+    # model_name: str = "gpt-3.5-turbo-0613"
 
     use_tools: bool = False
     salesperson_name: str = "Ted Lasso"
     salesperson_role: str = "Business Development Representative"
     company_name: str = "Sleep Haven"
-    company_business: str = "Sleep Haven is a premium mattress company that provides customers with the most comfortable and supportive sleeping experience possible. We offer a range of high-quality mattresses, pillows, and bedding accessories that are designed to meet the unique needs of our customers."
-    company_values: str = "Our mission at Sleep Haven is to help people achieve a better night's sleep by providing them with the best possible sleep solutions. We believe that quality sleep is essential to overall health and well-being, and we are committed to helping our customers achieve optimal sleep by offering exceptional products and customer service."
-    conversation_purpose: str = "find out whether they are looking to achieve better sleep via buying a premier mattress."
+    company_business: str = "Sleep Haven 是一家高端床垫公司，致力于为客户提供最舒适和最具支撑性的睡眠体验。我们提供一系列高品质的床垫、枕头和床上用品配件，旨在满足客户的独特需求。"
+    company_values: str = "我们在 Sleep Haven 的使命是通过提供最佳的睡眠解决方案，帮助人们实现更好的睡眠。我们相信优质的睡眠对整体健康和幸福至关重要，我们致力于通过提供卓越的产品和客户服务，帮助客户获得最佳睡眠。"
+    conversation_purpose: str = "了解他们是否通过购买高端床垫来实现更好的睡眠。"
     conversation_type: str = "call"
 
     def retrieve_conversation_stage(self, key):
@@ -121,9 +115,9 @@ class SalesGPT(Chain):
     def seed_agent(self):
         """
         This method seeds the conversation by setting the initial conversation stage and clearing the conversation history.
-
+        该方法通过设置初始对话阶段并清空对话历史来初始化对话。
         The initial conversation stage is retrieved using the key "1". The conversation history is reset to an empty list.
-
+        初始对话阶段通过键“1”获取。对话历史被重置为空列表。
         Returns:
             None
         """
@@ -134,46 +128,39 @@ class SalesGPT(Chain):
     def determine_conversation_stage(self):
         """
         Determines the current conversation stage based on the conversation history.
-
+        根据对话历史确定当前对话阶段。
         This method uses the stage_analyzer_chain to analyze the conversation history and determine the current stage.
         The conversation history is joined into a single string, with each entry separated by a newline character.
         The current conversation stage ID is also passed to the stage_analyzer_chain.
-
+        该方法使用 stage_analyzer_chain 来分析对话历史并确定当前阶段。对话历史被连接成一个单一的字符串，每个条目之间用换行符分隔。同时，当前对话阶段 ID 也被传递给 stage_analyzer_chain。
         The method then prints the determined conversation stage ID and retrieves the corresponding conversation stage
         from the conversation_stage_dict dictionary using the retrieve_conversation_stage method.
-
+        然后，该方法打印出确定的对话阶段 ID，并通过 retrieve_conversation_stage 方法从 conversation_stage_dict 字典中获取相应的对话阶段。
         Finally, the method prints the determined conversation stage.
-
+        最后，方法打印出确定的对话阶段。
         Returns:
             None
         """
-        print(f"Conversation Stage ID before analysis: {self.conversation_stage_id}")
-        print("Conversation history:")
-        print(self.conversation_history)
+        print(f"current Conversation Stage ID before analysis: {self.conversation_stage_id}")
+        print("Conversation history: ", self.conversation_history)
+        # print(self.conversation_history)
+
+        temp1 = "\n".join(self.conversation_history).rstrip("\n")
+        temp2 = self.conversation_stage_id
+        temp3 = "\n".join([str(key) + ": " + str(value) for key, value in CONVERSATION_STAGES.items()])
         stage_analyzer_output = self.stage_analyzer_chain.invoke(
             input={
-                "conversation_history": "\n".join(self.conversation_history).rstrip(
-                    "\n"
-                ),
+                "conversation_history": "\n".join(self.conversation_history).rstrip("\n"),
                 "conversation_stage_id": self.conversation_stage_id,
-                "conversation_stages": "\n".join(
-                    [
-                        str(key) + ": " + str(value)
-                        for key, value in CONVERSATION_STAGES.items()
-                    ]
-                ),
+                "conversation_stages": "\n".join([str(key) + ": " + str(value) for key, value in CONVERSATION_STAGES.items()]),
             },
             return_only_outputs=False,
         )
-        print("Stage analyzer output")
-        print(stage_analyzer_output)
+        print("Stage analyzer output: ",stage_analyzer_output)
+        # print(stage_analyzer_output)
         self.conversation_stage_id = stage_analyzer_output.get("text")
-
-        self.current_conversation_stage = self.retrieve_conversation_stage(
-            self.conversation_stage_id
-        )
-
-        print(f"Conversation Stage: {self.current_conversation_stage}")
+        self.current_conversation_stage = self.retrieve_conversation_stage(self.conversation_stage_id)
+        # print(f"Conversation Stage: {self.current_conversation_stage}")
 
     @time_logger
     async def adetermine_conversation_stage(self):
@@ -241,7 +228,7 @@ class SalesGPT(Chain):
         Executes a step in the conversation. If the stream argument is set to True,
         it returns a streaming generator object for manipulating streaming chunks in downstream applications.
         If the stream argument is set to False, it calls the _call method with an empty dictionary as input.
-
+        执行对话中的一步。如果 stream 参数设置为 True，则返回一个流式生成器对象，用于在下游应用程序中处理流式数据块。
         Args:
             stream (bool, optional): A flag indicating whether to return a streaming generator object.
             Defaults to False.
@@ -249,9 +236,9 @@ class SalesGPT(Chain):
         Returns:
             Generator: A streaming generator object if stream is set to True. Otherwise, it returns None.
         """
-        if not stream:
+        if not stream: # 如果 stream 参数设置为 False，则调用 _call 方法，并传入一个空字典作为输入。
             return self._call(inputs={})
-        else:
+        else: # Generator：如果 stream 设置为 True，则返回一个流式生成器对象。否则，返回 None
             return self._streaming_generator()
 
     @time_logger
@@ -517,9 +504,9 @@ class SalesGPT(Chain):
             ai_message = self.sales_agent_executor.invoke(inputs)
             output = ai_message["output"]
         else:
-            ai_message = self.sales_conversation_utterance_chain.invoke(
-                inputs, return_intermediate_steps=True
-            )
+            ai_message = self.sales_conversation_utterance_chain.invoke(inputs, return_intermediate_steps=True)
+            ...
+            ...
             output = ai_message["text"]
 
         # Add agent's response to conversation history
@@ -540,8 +527,18 @@ class SalesGPT(Chain):
 
     @classmethod
     @time_logger
-    def from_llm(cls, llm: ChatLiteLLM, openai_api_key, verbose: bool = False, **kwargs) -> "SalesGPT":
+    def from_llm(cls, llm: ChatLiteLLM, openai_api_key, api_base_url, verbose: bool = False, **kwargs) -> "SalesGPT":
         """
+        类方法：从给定的 ChatLiteLLM 实例初始化 SalesGPT Controller。
+            此方法的主要功能包括：
+            设置
+                阶段分析器链（stage analyzer chain）
+                销售对话话语链（sales conversation utterance chain）。
+                检查是否需要使用自定义提示（custom prompts）
+                是否需要为代理设置工具（tools）。
+                    如果需要使用工具，则会配置知识库（knowledge base）、获取工具、设置提示，并使用这些工具初始化代理。
+                    如果不需要使用工具，则将销售代理执行器（sales agent executor）和知识库设置为 None。
+
         Class method to initialize the SalesGPT Controller from a given ChatLiteLLM instance.
 
         This method sets up the stage analyzer chain and sales conversation utterance chain. It also checks if custom prompts
@@ -564,12 +561,11 @@ class SalesGPT(Chain):
             The initialized SalesGPT Controller.
         """
         stage_analyzer_chain = StageAnalyzerChain.from_llm(llm, verbose=verbose)
-        sales_conversation_utterance_chain = SalesConversationChain.from_llm(llm, verbose=verbose)
+        # sales_conversation_utterance_chain = SalesConversationChain.from_llm(llm, verbose=verbose)
 
         # Handle custom prompts
         use_custom_prompt = kwargs.pop("use_custom_prompt", False)
         custom_prompt = kwargs.pop("custom_prompt", None)
-
         sales_conversation_utterance_chain = SalesConversationChain.from_llm(
             llm,
             verbose=verbose,
@@ -587,13 +583,12 @@ class SalesGPT(Chain):
             use_tools = use_tools_value
         else:
             raise ValueError("use_tools must be a boolean or a string ('True' or 'False')")
+
         sales_agent_executor = None
         knowledge_base = None
-
         if use_tools:
             product_catalog = kwargs.pop("product_catalog", None)
-            tools = get_tools(product_catalog, openai_api_key)
-
+            tools = get_tools(product_catalog, openai_api_key, api_base_url)
             prompt = CustomPromptTemplateForTools(
                 template=SALES_AGENT_TOOLS_PROMPT,
                 tools_getter=lambda x: tools,
@@ -610,30 +605,30 @@ class SalesGPT(Chain):
                     "conversation_history",
                 ],
             )
-            llm_chain = LLMChain(llm=llm, prompt=prompt, verbose=verbose)
+            llm_chain = LLMChain(llm=llm, prompt=prompt, verbose=verbose) # 返回一个 工具调用chain 对象
             tool_names = [tool.name for tool in tools]
             output_parser = SalesConvoOutputParser(ai_prefix=kwargs.get("salesperson_name", ""), verbose=verbose)
-            sales_agent_with_tools = LLMSingleActionAgent(
+            sales_agent_with_tools = LLMSingleActionAgent( #  创建一个只执行单一动作的代理
                 llm_chain=llm_chain,
                 output_parser=output_parser,
                 stop=["\nObservation:"],
                 allowed_tools=tool_names,
             )
-
+            # 单独的一个代理
             sales_agent_executor = CustomAgentExecutor.from_agent_and_tools(
                 agent=sales_agent_with_tools,
                 tools=tools,
                 verbose=verbose,
                 return_intermediate_steps=True,
             )
-
-        return cls(
+        temp = cls(
             stage_analyzer_chain=stage_analyzer_chain,
             sales_conversation_utterance_chain=sales_conversation_utterance_chain,
             sales_agent_executor=sales_agent_executor,
             knowledge_base=knowledge_base,
-            # model_name=llm.model,
+            model_name=llm.model,
             verbose=verbose,
             use_tools=use_tools,
             **kwargs,
         )
+        return temp

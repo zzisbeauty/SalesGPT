@@ -2,12 +2,12 @@
 # Feel free to modify, add/drop stages based on the use case.
 
 CONVERSATION_STAGES = {
-    "1": "Introduction: Start the conversation by introducing yourself and your company. Be polite and respectful while keeping the tone of the conversation professional. Your greeting should be welcoming. Always clarify in your greeting the reason why you are calling.",
-    "2": "Qualification: Qualify the prospect by confirming if they are the right person to talk to regarding your product/service. Ensure that they have the authority to make purchasing decisions.",
-    "3": "Value proposition: Briefly explain how your product/service can benefit the prospect. Focus on the unique selling points and value proposition of your product/service that sets it apart from competitors.",
-    "4": "Needs analysis: Ask open-ended questions to uncover the prospect's needs and pain points. Listen carefully to their responses and take notes.",
-    "5": "Solution presentation: Based on the prospect's needs, present your product/service as the solution that can address their pain points.",
-    "6": "Objection handling: Address any objections that the prospect may have regarding your product/service. Be prepared to provide evidence or testimonials to support your claims.",
-    "7": "Close: Ask for the sale by proposing a next step. This could be a demo, a trial or a meeting with decision-makers. Ensure to summarize what has been discussed and reiterate the benefits.",
-    "8": "End conversation: It's time to end the call as there is nothing else to be said.",
+    "1": "介绍阶段：通过自我介绍和介绍公司来开始对话。保持礼貌和尊重，同时确保语气专业。你在问候中应该清楚说明为什么打电话。",
+    "2": "资格确认阶段：通过确认对方是否是正确的联系人，确保他们有权做出购买决定。",
+    "3": "价值主张阶段：简要解释你的产品/服务如何帮助潜在客户，重点阐述产品/服务的独特卖点和价值主张，突出与竞争对手的差异。",
+    "4": "需求分析阶段：通过开放式问题了解潜在客户的需求和痛点。认真听取他们的回答并做记录。",
+    "5": "解决方案展示阶段：根据潜在客户的需求，展示你的产品/服务作为解决他们痛点的方案。",
+    "6": "处理异议：解决潜在客户对你的产品/服务可能有的任何异议。准备提供证据或客户推荐来支持你的主张。",
+    "7": "成交阶段：通过提议下一步行动来促成交易。可以是演示、试用或与决策者的会议。确保总结已讨论内容并重申利益。",
+    "8": "结束对话阶段：潜在客户离开电话、潜在客户不感兴趣，或者销售代理已经确定下一步行动。",
 }

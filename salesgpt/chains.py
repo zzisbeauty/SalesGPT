@@ -25,8 +25,9 @@ class StageAnalyzerChain(LLMChain):
                 "conversation_stages",
             ],
         )
-        print(f"STAGE ANALYZER PROMPT {prompt}")
-        return cls(prompt=prompt, llm=llm, verbose=verbose)
+        # print(f"STAGE ANALYZER PROMPT:--->\n {prompt}")
+        temp = cls(prompt=prompt, llm=llm, verbose=verbose) # 调用cls返回生成的类实例
+        return temp
 
 
 class SalesConversationChain(LLMChain):

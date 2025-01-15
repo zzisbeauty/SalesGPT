@@ -1,8 +1,6 @@
-import json
-import os
-from typing import List, Optional
-
 import uvicorn
+import json, os
+from typing import List, Optional
 from dotenv import load_dotenv
 from fastapi import FastAPI, Query, Header, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,6 +10,7 @@ from pydantic import BaseModel
 from salesgpt.salesgptapi import SalesGPTAPI
 
 # Load environment variables
+from apis import yiapi
 load_dotenv()
 
 # Access environment variables
@@ -47,7 +46,7 @@ def get_auth_key(authorization: str = Header(...)) -> None:
 
 @app.get("/")
 async def say_hello():
-    return {"message": "Hello World"}
+    return {"message": "Hello World . "}
 
 
 class MessageList(BaseModel):
@@ -63,10 +62,12 @@ async def get_bot_name(authorization: Optional[str] = Header(None)):
     load_dotenv()
     if os.getenv("ENVIRONMENT") == "production":
         get_auth_key(authorization)
-        
+
     sales_api = SalesGPTAPI(
-        config_path=os.getenv("CONFIG_PATH", "examples/example_agent_setup.json"),
-        product_catalog=os.getenv("PRODUCT_CATALOG", "examples/sample_product_catalog.txt"),
+        openai_api_key=yiapi[0],
+        base_url=yiapi[1],
+        config_path=os.getenv("CONFIG_PATH", "examples/example_agent_setup_cn.json"),
+        product_catalog=os.getenv("PRODUCT_CATALOG", "examples/sample_product_catalog_cn.txt"),
         verbose=True,
         model_name=os.getenv("GPT_MODEL", "gpt-3.5-turbo-0613"),
     )
@@ -103,11 +104,11 @@ async def chat_with_sales_agent(req: MessageList, stream: bool = Query(False), a
         sales_api = SalesGPTAPI(
             config_path=os.getenv("CONFIG_PATH", "examples/example_cn_agent_setup.json"),
             verbose=True,
-            openai_api_key=OPENAI_API_KEY,
+            openai_api_key=yiapi[0],
+            base_url=yiapi[1],
             product_catalog=os.getenv("PRODUCT_CATALOG", "examples/sample_product_catalog_cn.txt"),
             model_name=os.getenv("GPT_MODEL", "gpt-3.5-turbo-0613"),
-            use_tools=os.getenv("USE_TOOLS_IN_API", "True").lower()
-            in ["true", "1", "t"],
+            use_tools=os.getenv("USE_TOOLS_IN_API", "True").lower() in ["true", "1", "t"],
         )
         print(f"TOOLS?: {sales_api.sales_agent.use_tools}")
         sessions[req.session_id] = sales_api
@@ -127,4 +128,4 @@ async def chat_with_sales_agent(req: MessageList, stream: bool = Query(False), a
 
 # Main entry point
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

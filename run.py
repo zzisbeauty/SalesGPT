@@ -3,12 +3,12 @@ import json
 import logging
 import os
 import warnings
-
-from dotenv import load_dotenv
+from salesgpt.agents import SalesGPT
 from langchain_community.chat_models import ChatLiteLLM
 
-from salesgpt.agents import SalesGPT
 
+from dotenv import load_dotenv
+from apis import *
 load_dotenv()  # loads .env file
 
 # Suppress warnings
@@ -29,12 +29,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Description of your program")
 
     # Add arguments
-    parser.add_argument(
-        "--config", type=str, help="Path to agent config file", default=""
-    )
-    parser.add_argument(
-        "--verbose", action="store_true", help="Verbosity", default=False
-    )
+    parser.add_argument("--config", type=str, help="Path to agent config file", default="")
+    parser.add_argument("--verbose", action="store_true", help="Verbosity", default=False)
     parser.add_argument(
         "--max_num_turns",
         type=int,
@@ -44,8 +40,6 @@ if __name__ == "__main__":
 
     # Parse arguments
     args = parser.parse_args()
-
-    # Access arguments
     config_path = args.config
     verbose = args.verbose
     max_num_turns = args.max_num_turns
@@ -64,12 +58,13 @@ if __name__ == "__main__":
         if USE_TOOLS:
             sales_agent_kwargs.update(
                 {
-                    "product_catalog": "examples/sample_product_catalog.txt",
+                    "product_catalog": "examples/sample_product_catalog_cn.txt",
                     "salesperson_name": "Ted Lasso",
                 }
             )
 
-        sales_agent = SalesGPT.from_llm(llm, **sales_agent_kwargs)
+        sales_agent = SalesGPT.from_llm(llm, openai_api_key=yiapi[0], api_base_url=yiapi[1],
+                                        **sales_agent_kwargs)
     else:
         try:
             with open(config_path, "r", encoding="UTF-8") as f:
@@ -82,7 +77,8 @@ if __name__ == "__main__":
             exit(1)
 
         print(f"Agent config {config}")
-        sales_agent = SalesGPT.from_llm(llm, verbose=verbose, **config)
+        sales_agent = SalesGPT.from_llm(llm,openai_api_key=yiapi[0], api_base_url=yiapi[1],
+                                         verbose=verbose, **config)
 
     sales_agent.seed_agent()
     print("=" * 10)
